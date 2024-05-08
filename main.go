@@ -1,85 +1,15 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log"
-	"os/exec"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/londek/reactea"
 	"github.com/samber/lo"
 )
-
-type Group struct {
-	Name  string
-	X     string
-	Gid   string
-	Users []string
-}
-
-func execCommand(ctx context.Context, name string, args ...string) (string, error) {
-	cmd := exec.CommandContext(ctx, name, args...)
-
-	var buffer bytes.Buffer
-	cmd.Stdout = &buffer
-
-	err := cmd.Run()
-	if err != err {
-		return "", err
-	}
-	return buffer.String(), nil
-}
-
-func buildUser(ctx context.Context) (*Group, error) {
-
-	input, err := execCommand(ctx, "getent", "group", "nixbld")
-	if err != err {
-		return nil, err
-	}
-
-	group := Group{}
-
-	// NAME:X:GID:MEMBERS,...
-
-	splits := strings.SplitN(input, ":", 4)
-
-	group.Name = splits[0]
-	group.X = splits[1]
-	group.Gid = splits[2]
-	group.Users = strings.Split(splits[3], ",")
-
-	// fmt.Println(group)
-
-	return &group, nil
-}
-
-func pgrep(ctx context.Context, user string) (string, error) {
-	input, err := execCommand(ctx, "pgrep", "-fu", user)
-	if err != err {
-		return "", err
-	}
-	// fmt.Println(input)
-	return input, nil
-}
-
-func activeBuildUsers(ctx context.Context) (string, error) {
-	group, err := buildUser(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	for _, user := range group.Users {
-
-		fmt.Println(pgrep(ctx, user))
-
-	}
-
-	return "", nil
-}
 
 type Model struct {
 	Users []string
@@ -213,11 +143,19 @@ func (c *Component) Update(msg tea.Msg) tea.Cmd {
 }
 
 func main() {
+	ctx := context.Background()
+	group, err := buildUser(ctx)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	fmt.Println(group)
+
 	// reactea.NewProgram initializes program with
 	// "translation layer", so Reactea components work
-	program := reactea.NewProgram(newApp())
+	// program := reactea.NewProgram(newApp())
 
-	if _, err := program.Run(); err != nil {
-		panic(err)
-	}
+	// if _, err := program.Run(); err != nil {
+	// 	panic(err)
+	// }
 }
