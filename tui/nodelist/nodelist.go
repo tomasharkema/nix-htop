@@ -25,6 +25,7 @@ type Model struct {
 type builderItem struct {
 	User     nixbuilders.ActiveUser
 	Progress progress.Model
+	Info     ProcessInfo
 }
 
 func (m Model) getItems() []list.Item {
@@ -35,12 +36,33 @@ func (m Model) getItems() []list.Item {
 		item := builderItem{
 			User:     item,
 			Progress: progress.New(),
+			Info:     newInfo(item),
 		}
 
 		items = append(items, item)
 	}
 
 	return items
+}
+
+type ProcessInfo struct {
+	CpuPercent    float64
+	MemoryPercent float32
+	MemoryBytes   uint64
+}
+
+func newInfo(item nixbuilders.ActiveUser) ProcessInfo {
+	firstProcess := item.Processes[0]
+
+	percent, _ := firstProcess.CPUPercent()
+	mem, _ := firstProcess.MemoryPercent()
+	memSize, _ := firstProcess.MemoryInfo()
+
+	return ProcessInfo{
+		CpuPercent:    percent,
+		MemoryPercent: mem,
+		MemoryBytes:   memSize.VMS,
+	}
 }
 
 func (m Model) Init() tea.Cmd {
@@ -121,12 +143,8 @@ func (a builderItem) Description() string {
 	if len(a.User.Processes) == 0 {
 		return ""
 	}
-	firstProcess := a.User.Processes[0]
 
-	percent, _ := firstProcess.CPUPercent()
-	mem, _ := firstProcess.MemoryPercent()
+	prog := a.Progress.ViewAs(a.Info.CpuPercent)
 
-	prog := a.Progress.ViewAs(percent)
-
-	return fmt.Sprintf("CPU %.0f%% | MEM %.0f%% | PROCS %d\n%s", percent*100, mem*100, len(a.User.Processes), prog)
+	return fmt.Sprintf("CPU %.0f%% | MEM %d %.0f%% | PROCS %d\n%s", a.Info.CpuPercent*100, a.Info.MemoryBytes, a.Info.MemoryPercent*100, len(a.User.Processes), prog)
 }
