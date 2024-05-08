@@ -57,11 +57,16 @@ func getBuilderStatus() tea.Cmd {
 	}
 }
 
+type TickMsg time.Time
+
 func (m Model) Init() tea.Cmd {
 	cmds := []tea.Cmd{
 		getBuilderStatus(),
 		m.spinner.Tick,
 		m.nodelist.Init(),
+		tea.Tick(time.Second*2, func(t time.Time) tea.Msg {
+			return TickMsg(t)
+		}),
 	}
 	return tea.Batch(cmds...)
 }
@@ -92,7 +97,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = getBuilderStatus()
 		cmds = append(cmds, cmd)
 
-	// case nodelist.NodeSelectedMsg:
+	case TickMsg:
+		cmd = getBuilderStatus()
+		cmds = append(cmds, cmd)
+
+		// case nodelist.NodeSelectedMsg:
 	// m.selectedNodeID = string(msg)
 	// m.nodedetails = nodedetails.New(&m.tsStatus, m.selectedNodeID, m.w, m.h)
 	// m.viewState = viewStateDetails
@@ -114,11 +123,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.nodelist, cmd = m.nodelist.Update(msg)
 	}
 	// }
-
-	if time.Since(m.lastUpdated) > 2*time.Second {
-		cmd = getBuilderStatus()
-		cmds = append(cmds, cmd)
-	}
 
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
