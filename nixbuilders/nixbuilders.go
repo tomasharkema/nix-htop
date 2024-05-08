@@ -3,6 +3,7 @@ package nixbuilders
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -36,6 +37,8 @@ func execCommand(ctx context.Context, name string, args ...string) (string, erro
 	return strings.Trim(buffer.String(), " \n"), nil
 }
 
+var ErrParseFailed = errors.New("parse failed")
+
 func buildUser(ctx context.Context) (*Group, error) {
 
 	input, err := execCommand(ctx, "getent", "group", "nixbld")
@@ -48,6 +51,10 @@ func buildUser(ctx context.Context) (*Group, error) {
 	// NAME:X:GID:MEMBERS,...
 
 	splits := strings.SplitN(input, ":", 4)
+
+	if len(splits) != 4 {
+		return nil, ErrParseFailed
+	}
 
 	group.Name = splits[0]
 	group.X = splits[1]
@@ -69,7 +76,12 @@ func pgrep(ctx context.Context, user string) ([]int32, error) {
 		if pid == "" {
 			return []int32{}
 		}
-		pidInt, _ := strconv.ParseInt(pid, 10, 32)
+
+		pidInt, err := strconv.ParseInt(pid, 10, 32)
+		if err != nil {
+			return []int32{}
+		}
+
 		return []int32{int32(pidInt)}
 	})
 
@@ -96,9 +108,15 @@ func activeBuildUsers(ctx context.Context, users []string) ([]ActiveUser, error)
 
 		userObj, _ := user.Lookup(userName)
 
-		uid, _ := strconv.ParseUint(userObj.Uid, 10, 32)
+		uid, err := strconv.ParseUint(userObj.Uid, 10, 32)
+		if err != nil {
+			break
+		}
 
-		pids, _ := pgrep(ctx, userName)
+		pids, err := pgrep(ctx, userName)
+		if err != nil {
+			break
+		}
 
 		if len(pids) > 0 {
 
@@ -108,7 +126,11 @@ func activeBuildUsers(ctx context.Context, users []string) ([]ActiveUser, error)
 			})
 
 			dir, _ := lo.Find(dirs, func(dir fs.DirEntry) bool {
-				info, _ := dir.Info()
+				info, err := dir.Info()
+				if err != nil {
+					return false
+				}
+
 				obj := info.Sys()
 				// fmt.Println(obj)
 

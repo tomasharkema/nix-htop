@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/tomasharkema/nix-htop/nixbuilders"
@@ -21,12 +22,22 @@ type Model struct {
 	w        int
 	h        int
 }
+type builderItem struct {
+	User     nixbuilders.ActiveUser
+	Progress progress.Model
+}
 
 func (m Model) getItems() []list.Item {
 	items := []list.Item{}
 
 	for _, item := range *m.status {
-		items = append(items, builderItem{item})
+
+		item := builderItem{
+			User:     item,
+			Progress: progress.New(),
+		}
+
+		items = append(items, item)
 	}
 
 	return items
@@ -45,11 +56,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	// 	m, kcmds = m.keyBindingsHandler(msg)
 	// 	cmds = append(cmds, kcmds...)
 	// default:
-	// }
-
-	// cmd = func() tea.Msg {
-	// 	<-time.After(time.Second * 2)
-	// 	return RefreshMsg(true)
 	// }
 
 	cmds = append(cmds, cmd)
@@ -99,24 +105,28 @@ func (m *Model) SetSize(w int, h int) {
 	m.list.SetSize(w, h-headerHeight)
 }
 
-type builderItem struct {
-	nixbuilders.ActiveUser
-}
-
 func (a builderItem) FilterValue() string {
-	return a.User
+	return a.User.User
 }
 
 func (a builderItem) Title() string {
 
 	// cmd, _ := a.processes[0].Cmdline()
 
-	return fmt.Sprintf("%s %s", lipgloss.NewStyle().Bold(true).Render(a.DirName()), a.User)
+	return fmt.Sprintf("%s %s", lipgloss.NewStyle().Bold(true).Render(a.User.DirName()), a.User.User)
 }
 
 func (a builderItem) Description() string {
 
-	percent, _ := a.Processes[0].CPUPercent()
-	mem, _ := a.Processes[0].MemoryPercent()
-	return fmt.Sprintf("CPU %.0f%% | MEM %.0f%% | PROCS %d", percent*100, mem*100, len(a.Processes))
+	if len(a.User.Processes) == 0 {
+		return ""
+	}
+	firstProcess := a.User.Processes[0]
+
+	percent, _ := firstProcess.CPUPercent()
+	mem, _ := firstProcess.MemoryPercent()
+
+	prog := a.Progress.ViewAs(percent)
+
+	return fmt.Sprintf("CPU %.0f%% | MEM %.0f%% | PROCS %d\n%s", percent*100, mem*100, len(a.User.Processes), prog)
 }
