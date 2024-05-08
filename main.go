@@ -1,15 +1,17 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"log"
+	"os"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/londek/reactea"
-	"github.com/samber/lo"
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/tomasharkema/nix-htop/tui"
 )
+
+var docStyle = lipgloss.NewStyle().Margin(1, 2)
 
 type Model struct {
 	Users []string
@@ -95,61 +97,102 @@ type Model struct {
 // 	}
 // }
 
-type item string
+// type item string
 
-func (i item) FilterValue() string { return string(i) }
+// func (i item) FilterValue() string { return string(i) }
 
-type Component struct {
-	reactea.BasicComponent
-	reactea.BasicPropfulComponent[reactea.NoProps]
+// type Component struct {
+// 	reactea.BasicComponent
+// 	reactea.BasicPropfulComponent[reactea.NoProps]
 
-	users []string
-	list  list.Model
+// 	users []string
+// 	list  list.Model
+// }
+
+// func newApp() *Component {
+// 	ctx := context.Background()
+// 	group, err := buildUser(ctx)
+// 	if err != nil {
+// 		log.Fatalln(err)
+// 	}
+
+// 	items := lo.Map(group.Users, func(user string, index int) list.Item {
+// 		return item(user)
+// 	})
+
+// 	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
+// 	return &Component{
+// 		users: group.Users,
+// 		list:  l,
+// 	}
+// }
+
+// func (c *Component) Render(width, height int) string {
+// 	return c.list.View()
+// }
+
+// func (c *Component) Update(msg tea.Msg) tea.Cmd {
+// 	switch msg := msg.(type) {
+// 	case tea.KeyMsg:
+// 		if msg.String() == "ctrl+c" {
+// 			return reactea.Destroy
+// 		}
+// 	}
+
+// 	var cmd tea.Cmd
+// 	c.list, cmd = c.list.Update(msg)
+// 	return cmd
+// }
+
+type model struct {
+	list list.Model
 }
 
-func newApp() *Component {
-	ctx := context.Background()
-	group, err := buildUser(ctx)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	items := lo.Map(group.Users, func(user string, index int) list.Item {
-		return item(user)
-	})
-
-	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
-	return &Component{
-		users: group.Users,
-		list:  l,
-	}
+func (m model) Init() tea.Cmd {
+	return nil
 }
 
-func (c *Component) Render(width, height int) string {
-	return c.list.View()
-}
-
-func (c *Component) Update(msg tea.Msg) tea.Cmd {
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
-			return reactea.Destroy
+			return m, tea.Quit
 		}
+	case tea.WindowSizeMsg:
+		h, v := docStyle.GetFrameSize()
+		m.list.SetSize(msg.Width-h, msg.Height-v)
 	}
 
 	var cmd tea.Cmd
-	c.list, cmd = c.list.Update(msg)
-	return cmd
+	m.list, cmd = m.list.Update(msg)
+	return m, cmd
+}
+
+func (m model) View() string {
+	return docStyle.Render(m.list.View())
 }
 
 func main() {
-	ctx := context.Background()
-	group, err := buildUser(ctx)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	// ctx := context.Background()
 
-	fmt.Println(group)
+	p := tea.NewProgram(tui.New(), tea.WithAltScreen())
+
+	if _, err := p.Run(); err != nil {
+		fmt.Println("Error running program:", err)
+		os.Exit(1)
+	}
+	// for _, user := range active {
+
+	// 	fmt.Println(user.user, "===>")
+
+	// 	for _, processInfo := range user.processes {
+
+	// 		cmdline, _ := processInfo.Name()
+
+	// 		fmt.Println(user.user, processInfo.Pid, cmdline)
+	// 	}
+	// 	fmt.Println("<===")
+	// }
 
 	// reactea.NewProgram initializes program with
 	// "translation layer", so Reactea components work
