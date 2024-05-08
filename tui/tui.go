@@ -59,14 +59,16 @@ func getBuilderStatus() tea.Cmd {
 
 type TickMsg time.Time
 
+func (m Model) Tick() tea.Msg {
+	return TickMsg(time.Now())
+}
+
 func (m Model) Init() tea.Cmd {
 	cmds := []tea.Cmd{
 		getBuilderStatus(),
 		m.spinner.Tick,
 		m.nodelist.Init(),
-		tea.Tick(time.Second*2, func(t time.Time) tea.Msg {
-			return TickMsg(t)
-		}),
+		m.Tick,
 	}
 	return tea.Batch(cmds...)
 }
@@ -100,7 +102,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case TickMsg:
 		cmd = getBuilderStatus()
 		cmds = append(cmds, cmd)
+		cmd = tea.Tick(time.Second*2, func(t time.Time) tea.Msg {
+			return TickMsg(t)
+		})
 
+		cmds = append(cmds, cmd)
 		// case nodelist.NodeSelectedMsg:
 	// m.selectedNodeID = string(msg)
 	// m.nodedetails = nodedetails.New(&m.tsStatus, m.selectedNodeID, m.w, m.h)
