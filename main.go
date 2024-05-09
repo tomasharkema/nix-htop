@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -8,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/tomasharkema/nix-htop/nixbuilders"
 	"github.com/tomasharkema/nix-htop/tui"
 )
 
@@ -50,8 +52,10 @@ func (m model) View() string {
 }
 
 func main() {
-	// ctx := context.Background()
+	ctx := context.Background()
 
+	b, _ := nixbuilders.GetActiveBuilders(ctx)
+	fmt.Println(b)
 	// go
 	// nixbuilders.ConnectSocket()
 

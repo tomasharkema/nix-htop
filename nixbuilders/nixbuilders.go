@@ -3,7 +3,6 @@ package nixbuilders
 import (
 	"bytes"
 	"context"
-	"errors"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/shirou/gopsutil/process"
+	"github.com/wfd3/go-groups/src/group"
 )
 
 type Group struct {
@@ -37,55 +37,22 @@ func execCommand(ctx context.Context, name string, args ...string) (string, erro
 	return strings.Trim(buffer.String(), " \n"), nil
 }
 
-var ErrParseFailed = errors.New("parse failed")
+func pgrep(ctx context.Context, users []string) (map[string][]*process.Process, error) {
 
-func buildUser(ctx context.Context) (*Group, error) {
-
-	input, err := execCommand(ctx, "getent", "group", "nixbld")
-	if err != err {
+	pr, err := process.ProcessesWithContext(ctx)
+	if err != nil {
 		return nil, err
 	}
 
-	group := Group{}
+	prs := lo.GroupBy(pr, func(p *process.Process) string {
 
-	// NAME:X:GID:MEMBERS,...
+		userName, _ := p.UsernameWithContext(ctx)
 
-	splits := strings.SplitN(input, ":", 4)
+		return userName
 
-	if len(splits) != 4 {
-		return nil, ErrParseFailed
-	}
-
-	group.Name = splits[0]
-	group.X = splits[1]
-	group.Gid = splits[2]
-	group.Users = strings.Split(splits[3], ",")
-
-	// fmt.Println(group)
-
-	return &group, nil
-}
-
-func pgrep(ctx context.Context, user string) ([]int32, error) {
-	input, err := execCommand(ctx, "pgrep", "-fu", user)
-	if err != err {
-		return []int32{}, err
-	}
-
-	pids := lo.FlatMap(strings.Split(input, "\n"), func(pid string, index int) []int32 {
-		if pid == "" {
-			return []int32{}
-		}
-
-		pidInt, err := strconv.ParseInt(pid, 10, 32)
-		if err != nil {
-			return []int32{}
-		}
-
-		return []int32{int32(pidInt)}
 	})
 
-	return pids, nil
+	return prs, nil
 }
 
 type ActiveUser struct {
@@ -102,11 +69,17 @@ func (a ActiveUser) DirName() string {
 
 func activeBuildUsers(ctx context.Context, users []string) ([]ActiveUser, error) {
 
+	processesByUser, err := pgrep(ctx, users)
+	if err != nil {
+		return nil, err
+	}
+
 	dirs, _ := os.ReadDir("/tmp")
 
 	activeUsers := []ActiveUser{}
 	for _, userName := range users {
 
+		processes := processesByUser[userName]
 		userObj, _ := user.Lookup(userName)
 
 		uid, err := strconv.ParseUint(userObj.Uid, 10, 32)
@@ -114,17 +87,7 @@ func activeBuildUsers(ctx context.Context, users []string) ([]ActiveUser, error)
 			break
 		}
 
-		pids, err := pgrep(ctx, userName)
-		if err != nil {
-			break
-		}
-
-		if len(pids) > 0 {
-
-			processes := lo.Map(pids, func(pid int32, index int) *process.Process {
-				processInfo, _ := process.NewProcess(pid)
-				return processInfo
-			})
+		if len(processes) > 0 {
 
 			dir, _ := lo.Find(dirs, func(dir fs.DirEntry) bool {
 				info, err := dir.Info()
@@ -163,14 +126,13 @@ func activeBuildUsers(ctx context.Context, users []string) ([]ActiveUser, error)
 type ActiveBuildersResponse = *[]ActiveUser
 
 func GetActiveBuilders(ctx context.Context) (ActiveBuildersResponse, error) {
-	group, err := buildUser(ctx)
+
+	gr, err := group.Lookup("nixbld")
 	if err != nil {
 		return nil, err
 	}
 
-	// fmt.Println(group)
-
-	active, err := activeBuildUsers(ctx, group.Users)
+	active, err := activeBuildUsers(ctx, gr.Members)
 	if err != nil {
 		return nil, err
 	}

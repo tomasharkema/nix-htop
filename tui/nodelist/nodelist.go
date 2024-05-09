@@ -73,11 +73,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	// cmds = append(cmds, cmd)
 
-	m.table, cmd = m.table.Update(msg)
+	// m.table, cmd = m.table.Update(msg)
+	// cmds = append(cmds, cmd)
+
+	m.list, cmd = m.list.Update(msg)
 	cmds = append(cmds, cmd)
 
-	// m.list, cmd = m.list.Update(msg)
-	// cmds = append(cmds, cmd)
 	// m.updateKeybindings()
 	return m, tea.Batch(cmds...)
 }
@@ -112,10 +113,10 @@ func New(status nixbuilders.ActiveBuildersResponse, w, h int) Model {
 }
 
 func (m Model) View() string {
-	// lb:= m.list.View()
-	tb := m.table.View()
+	lb := m.list.View()
+	// tb := m.table.View()
 
-	return lipgloss.JoinVertical(lipgloss.Left, m.headerView(), tb)
+	return lipgloss.JoinVertical(lipgloss.Left, m.headerView(), lb) // tb)
 }
 
 func (m Model) headerView() string {
