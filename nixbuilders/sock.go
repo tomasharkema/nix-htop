@@ -9,6 +9,10 @@ import (
 	"github.com/nix-community/go-nix/pkg/wire"
 )
 
+var (
+	magicOne = uint64(0x6e697863)
+)
+
 func reader(r io.Reader) {
 	for {
 		rd := wire.NewBytesReader(r, 64)
@@ -38,7 +42,7 @@ func ConnectSocket() {
 	// }
 
 	// go reader(c)
-	fmt.Println(wire.WriteUint64(c, 0x6e697863))
+	fmt.Println(wire.WriteUint64(c, magicOne))
 	magix2, _ := wire.ReadUint64(c)
 	fmt.Println(fmt.Sprintf("%02X", magix2), "0x6478696f", magix2 == 0x6478696f)
 

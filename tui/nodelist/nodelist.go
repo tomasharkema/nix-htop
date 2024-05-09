@@ -8,8 +8,16 @@ import (
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/evertras/bubble-table/table"
 	"github.com/tomasharkema/nix-htop/nixbuilders"
 	"github.com/tomasharkema/nix-htop/tui/keymap"
+)
+
+const (
+	columnKeyID     = "id"
+	columnKeyName   = "name"
+	columnKeyStatus = "status"
+	columnKeyImage  = "image"
 )
 
 type RefreshMsg bool
@@ -18,11 +26,13 @@ type Model struct {
 	status   nixbuilders.ActiveBuildersResponse
 	exitNode string
 	list     list.Model
+	table    table.Model
 	keyMap   keymap.KeyMap
 	msg      string
 	w        int
 	h        int
 }
+
 type builderItem struct {
 	User     nixbuilders.ActiveUser
 	Progress progress.Model
@@ -61,21 +71,34 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	// default:
 	// }
 
+	// cmds = append(cmds, cmd)
+
+	m.table, cmd = m.table.Update(msg)
 	cmds = append(cmds, cmd)
 
-	m.list, cmd = m.list.Update(msg)
-	cmds = append(cmds, cmd)
+	// m.list, cmd = m.list.Update(msg)
+	// cmds = append(cmds, cmd)
 	// m.updateKeybindings()
 	return m, tea.Batch(cmds...)
 }
 
 func New(status nixbuilders.ActiveBuildersResponse, w, h int) Model {
 
+	columns := []table.Column{
+		table.NewColumn(columnKeyID, "ID", 15),
+		// .WithStyle(idColumnStyle),
+		table.NewColumn(columnKeyName, "Name", 30),
+		table.NewColumn(columnKeyStatus, "Status", 30),
+		table.NewColumn(columnKeyImage, "Image", 70),
+		// .WithStyle(imageColumnStyle),
+	}
+
 	d := list.NewDefaultDelegate()
 
 	m := Model{
 		status: status,
 		list:   list.New([]list.Item{}, d, w, h),
+		table:  table.New(columns),
 		// keyMap:     keymap.NewKeyMap(),
 		// tailStatus: status,
 	}
@@ -89,7 +112,10 @@ func New(status nixbuilders.ActiveBuildersResponse, w, h int) Model {
 }
 
 func (m Model) View() string {
-	return fmt.Sprintf("%s\n%s", m.headerView(), m.list.View())
+	// lb:= m.list.View()
+	tb := m.table.View()
+
+	return lipgloss.JoinVertical(lipgloss.Left, m.headerView(), tb)
 }
 
 func (m Model) headerView() string {

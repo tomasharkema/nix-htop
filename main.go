@@ -8,7 +8,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/tomasharkema/nix-htop/nixbuilders"
 	"github.com/tomasharkema/nix-htop/tui"
 )
 
@@ -54,7 +53,7 @@ func main() {
 	// ctx := context.Background()
 
 	// go
-	nixbuilders.ConnectSocket()
+	// nixbuilders.ConnectSocket()
 
 	p := tea.NewProgram(tui.New(), tea.WithAltScreen())
 
