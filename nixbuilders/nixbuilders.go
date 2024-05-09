@@ -89,14 +89,15 @@ func pgrep(ctx context.Context, user string) ([]int32, error) {
 }
 
 type ActiveUser struct {
-	User      string
-	UserObj   *user.User
-	Processes []*process.Process
-	Dir       fs.DirEntry
+	User        string
+	UserObj     *user.User
+	Processes   []*process.Process
+	RootProcess *process.Process
+	Dir         fs.DirEntry
 }
 
 func (a ActiveUser) DirName() string {
-	return strings.ReplaceAll(strings.ReplaceAll(a.Dir.Name(), "nix-build-", ""), ".drv-0", "")
+	return strings.ReplaceAll(a.Dir.Name(), "nix-build-", "")
 }
 
 func activeBuildUsers(ctx context.Context, users []string) ([]ActiveUser, error) {
@@ -141,11 +142,16 @@ func activeBuildUsers(ctx context.Context, users []string) ([]ActiveUser, error)
 				return false
 			})
 
+			rootProcess, _ := lo.Find(processes, func(pr *process.Process) bool {
+				return true
+			})
+
 			activeUsers = append(activeUsers, ActiveUser{
-				User:      userName,
-				UserObj:   userObj,
-				Processes: processes,
-				Dir:       dir,
+				User:        userName,
+				UserObj:     userObj,
+				Processes:   processes,
+				RootProcess: rootProcess,
+				Dir:         dir,
 			})
 		}
 

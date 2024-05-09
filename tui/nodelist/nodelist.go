@@ -2,6 +2,7 @@ package nodelist
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/progress"
@@ -25,7 +26,7 @@ type Model struct {
 type builderItem struct {
 	User     nixbuilders.ActiveUser
 	Progress progress.Model
-	Info     ProcessInfo
+	Info     nixbuilders.ProcessInfo
 }
 
 func (m Model) getItems() []list.Item {
@@ -36,33 +37,13 @@ func (m Model) getItems() []list.Item {
 		item := builderItem{
 			User:     item,
 			Progress: progress.New(),
-			Info:     newInfo(item),
+			Info:     nixbuilders.NewInfo(item),
 		}
 
 		items = append(items, item)
 	}
 
 	return items
-}
-
-type ProcessInfo struct {
-	CpuPercent    float64
-	MemoryPercent float32
-	MemoryBytes   uint64
-}
-
-func newInfo(item nixbuilders.ActiveUser) ProcessInfo {
-	firstProcess := item.Processes[0]
-
-	percent, _ := firstProcess.CPUPercent()
-	mem, _ := firstProcess.MemoryPercent()
-	memSize, _ := firstProcess.MemoryInfo()
-
-	return ProcessInfo{
-		CpuPercent:    percent,
-		MemoryPercent: mem,
-		MemoryBytes:   memSize.VMS,
-	}
 }
 
 func (m Model) Init() tea.Cmd {
@@ -135,7 +116,14 @@ func (a builderItem) Title() string {
 
 	// cmd, _ := a.processes[0].Cmdline()
 
-	return fmt.Sprintf("%s %s", lipgloss.NewStyle().Bold(true).Render(a.User.DirName()), a.User.User)
+	sinceCreation := time.Since(a.Info.CreateTime).Round(time.Second)
+	sinceCreationStr := sinceCreation.String()
+
+	pkgs := lipgloss.NewStyle().Bold(true).Render(a.User.DirName())
+
+	// dir := a.User.Dir.Name()
+
+	return fmt.Sprintf("%s %s %s", pkgs, a.User.User, sinceCreationStr)
 }
 
 func (a builderItem) Description() string {
@@ -145,6 +133,6 @@ func (a builderItem) Description() string {
 	}
 
 	prog := a.Progress.ViewAs(a.Info.CpuPercent)
-
-	return fmt.Sprintf("CPU %.0f%% | MEM %d %.0f%% | PROCS %d\n%s", a.Info.CpuPercent*100, a.Info.MemoryBytes, a.Info.MemoryPercent*100, len(a.User.Processes), prog)
+	prog = ""
+	return fmt.Sprintf("CPU %.0f%% | MEM %s %.0f%% | PROCS %d | %s", a.Info.CpuPercent*100, a.Info.MemoryBytes.Floor().String(), a.Info.MemoryPercent*100, len(a.User.Processes), prog)
 }
