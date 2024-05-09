@@ -132,7 +132,7 @@ func (a builderItem) Description() string {
 		return ""
 	}
 
-	prog := a.Progress.ViewAs(a.Info.CpuPercent)
-	prog = ""
-	return fmt.Sprintf("CPU %.0f%% | MEM %s %.0f%% | PROCS %d | %s", a.Info.CpuPercent*100, a.Info.MemoryBytes.Floor().String(), a.Info.MemoryPercent*100, len(a.User.Processes), prog)
+	// prog := a.Progress.ViewAs(a.Info.CpuPercent)
+	// prog = ""
+	return fmt.Sprintf("CPU %.0f%% | MEM %s %.0f%% | PROCS %d", a.Info.CpuPercent*100, a.Info.MemoryBytes.Floor().String(), a.Info.MemoryPercent*100, len(a.User.Processes)) //, prog)
 }
