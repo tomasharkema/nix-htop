@@ -1,26 +1,30 @@
 package nixbuilders
 
 import (
-	"bufio"
-	"encoding/binary"
 	"fmt"
 	"io"
+	"log"
 	"net"
-	"time"
+
+	"github.com/nix-community/go-nix/pkg/wire"
 )
 
 func reader(r io.Reader) {
-	buf := make([]byte, 8)
 	for {
-		n, err := r.Read(buf[:])
-		if err != nil {
-			return
+		rd := wire.NewBytesReader(r, 64)
+		buf := make([]byte, 64)
+		for {
+			n, err := rd.Read(buf[:])
+			if err != nil {
+				log.Fatalln("reader", err)
+				return
+			}
+			println("Client got:", string(buf[0:n]))
 		}
-		println("Client got:", string(buf[0:n]))
 	}
 }
 
-func connectSocket() {
+func ConnectSocket() {
 	socketPath := "/nix/var/nix/daemon-socket/socket"
 	c, err := net.Dial("unix", socketPath)
 	if err != nil {
@@ -28,18 +32,17 @@ func connectSocket() {
 	}
 	defer c.Close()
 
-	go reader(c)
+	// wr, err := wire.NewBytesWriter(c, 64)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	wr := bufio.NewWriter(c)
+	// go reader(c)
+	fmt.Println(wire.WriteUint64(c, 0x6e697863))
+	magix2, _ := wire.ReadUint64(c)
+	fmt.Println(fmt.Sprintf("%02X", magix2), "0x6478696f", magix2 == 0x6478696f)
 
-	buf := make([]byte, binary.MaxVarintLen64)
-	magic := uint64(0x6e697863)
-	n := binary.PutUvarint(buf, magic)
-	buf = buf[:n]
-	fmt.Println(wr.Write(buf))
-	fmt.Println(wr.WriteString("\n"))
-	wr.Flush()
-
+	fmt.Println(wire.WriteUint64(c, 0x10b))
 	// for {
 	// 	_, err := c.Write([]byte("hi"))
 	// 	if err != nil {
@@ -48,5 +51,4 @@ func connectSocket() {
 	// 	}
 	// 	time.Sleep(1e9)
 	// }
-	<-time.After(time.Hour * 24)
 }
