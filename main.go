@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+
 	"os"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/google/logger"
 	"github.com/tomasharkema/nix-htop/nixbuilders"
 	"github.com/tomasharkema/nix-htop/tui"
 )
@@ -53,6 +55,15 @@ func (m model) View() string {
 
 func main() {
 	ctx := context.Background()
+
+	logPath := "/tmp/nix-htop-nix.log"
+	lf, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0660)
+	if err != nil {
+		logger.Fatalf("Failed to open log file: %v", err)
+	}
+	defer lf.Close()
+
+	defer logger.Init("LoggerExample", false, true, lf).Close()
 
 	b, _ := nixbuilders.GetActiveBuilders(ctx)
 	fmt.Println(b)
