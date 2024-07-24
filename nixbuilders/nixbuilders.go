@@ -3,7 +3,6 @@ package nixbuilders
 import (
 	"bytes"
 	"context"
-	"github.com/google/logger"
 	"github.com/samber/lo"
 	"github.com/shirou/gopsutil/process"
 	"github.com/wfd3/go-groups/src/group"
@@ -82,8 +81,6 @@ func activeBuildUsers(ctx context.Context, users []string) ([]ActiveUser, error)
 		processes := processesByUser[userName]
 		userObj, _ := user.Lookup(userName)
 
-    logger.Info(userObj)
-    
 		uid, err := strconv.ParseUint(userObj.Uid, 10, 32)
 		if err != nil {
 			break
@@ -133,8 +130,6 @@ func GetActiveBuilders(ctx context.Context) (ActiveBuildersResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	logger.Info(gr)
 
 	active, err := activeBuildUsers(ctx, gr.Members)
 	if err != nil {
