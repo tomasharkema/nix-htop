@@ -13,7 +13,5 @@ buildGoModule rec {
 
   vendorHash = "sha256-XX0AMpZR3v9bZdLiqDYVT0pOGBbrM7rJERTmxlFIgZo=";
 
-  nativeBuildInputs = [musl];
-
   CGO_ENABLED = 1;
 }
