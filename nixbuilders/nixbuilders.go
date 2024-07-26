@@ -63,6 +63,9 @@ type ActiveUser struct {
 }
 
 func (a ActiveUser) DirName() string {
+	if a.Dir == nil {
+		return ""
+	}
 	return strings.ReplaceAll(a.Dir.Name(), "nix-build-", "")
 }
 
@@ -86,9 +89,11 @@ func activeBuildUsers(ctx context.Context, users []string) ([]ActiveUser, error)
 			break
 		}
 
-		if len(processes) > 0 {
+		if len(processes) <= 0 {
+			break
+		}
 
-			dir, _ := lo.Find(dirs, func(dir fs.DirEntry) bool {
+			dir, ok := lo.Find(dirs, func(dir fs.DirEntry) bool {
 				info, err := dir.Info()
 				if err != nil {
 					return false
@@ -104,7 +109,11 @@ func activeBuildUsers(ctx context.Context, users []string) ([]ActiveUser, error)
 				return false
 			})
 
-			rootProcess, _ := lo.Find(processes, func(pr *process.Process) bool {
+			if !ok {
+				break
+			}
+
+			rootProcess, ok := lo.Find(processes, func(pr *process.Process) bool {
 				return true
 			})
 
@@ -115,7 +124,7 @@ func activeBuildUsers(ctx context.Context, users []string) ([]ActiveUser, error)
 				RootProcess: rootProcess,
 				Dir:         dir,
 			})
-		}
+		
 
 	}
 
